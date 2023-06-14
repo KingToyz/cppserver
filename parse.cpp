@@ -2,6 +2,7 @@
 #include "context.h"
 #include <iostream>
 #include "taskpool.h"
+#include "message.h"
 int on_message_begin(http_parser* parser)
 {
     std::cout << "start to parse" << std::endl;
