@@ -2,3 +2,4 @@ testclient
 testmainepollagent
 testqueue
 testtaskpool
+build/*
