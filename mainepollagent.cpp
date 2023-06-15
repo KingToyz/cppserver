@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string.h>
 #include "queue.h"
+#include "connectionmgr.h"
 
 int MainEpollAgent::Loop()
 {
@@ -23,6 +24,7 @@ int MainEpollAgent::Loop()
         {
             if(evs[i].EventType == ACCPET)
             {
+                std::cout << "main accept" << std::endl;
                 subEpollAgents[evs[i].Fd % subEpollAgents.size()]->AddConnection(evs[i].Fd);
             }
             else if(evs[i].Fd == e.exitfd[0])
@@ -41,12 +43,13 @@ int MainEpollAgent::Loop()
 
 int MainEpollAgent::Init(int FD,int num)
 {
+    ConnectioMgr::GetInstance().Init();
     stop = false;
     subEpollAgents.reserve(num);
     for(int i = 0 ;i < num;i++)
-    {
-        SubEpollAgent* t = new SubEpollAgent;
-        subEpollAgents.push_back(t);
+    { 
+        auto c = std::make_unique<SubEpollAgent>();
+        subEpollAgents.push_back(std::move(c));
         subEpollAgents[i]->Init();
         subEpollAgents[i]->Loop();
     }

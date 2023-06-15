@@ -1,7 +1,6 @@
 #include "context.h"
 #include <iostream>
 #include <sys/socket.h>
-#include "connection.h"
 void Context::Destory()
 {
     // conn->Destory();
@@ -30,3 +29,4 @@ int Context::SendResponse()
     }
     return 0;
 }
+

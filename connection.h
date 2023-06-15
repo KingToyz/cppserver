@@ -7,7 +7,7 @@ class SubEpollAgent;
 
 class Connection {
 public:
-    Connection(int fd,SubEpollAgent* agent) : fd_(fd),context(fd),agent(agent){
+    Connection(int fd,SubEpollAgent* arg) : fd_(fd),context(fd),agent(arg){
     }
 
     int GetFd() const {

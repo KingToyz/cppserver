@@ -3,6 +3,8 @@
 #include <iostream>
 #include "taskpool.h"
 #include "message.h"
+#include <memory>
+#include "eventhandler.h"
 int on_message_begin(http_parser* parser)
 {
     std::cout << "start to parse" << std::endl;
@@ -39,8 +41,11 @@ int on_body(http_parser* parser, const char* at, size_t len)
     std::string str;
     str.assign(at,len);
     std::cout << "get body "  << str << std::endl;
-    Message message(at,len);
-    
+    std::shared_ptr<Message>message= std::make_shared<Message>(at,len);
+    auto f = [=](){
+        EventHandler::GetInstance().ProcessData(message);
+    };
+    TaskPool::GetInstance().AddToPool(std::move(f));
     return 0;
 }
 int on_message_complete(http_parser* parser)
@@ -64,16 +69,16 @@ Parser::Parser(Context* c):context(c)
 }
 int Parser::Execute(const std::vector<char>&data)
 {
-    std::string str(data.begin(),data.end());
-    std::cout << str;
+    // std::string str(data.begin(),data.end());
+    // std::cout << str;
     // std::string request("GET / HTTP/1.1\r\n"
     //                     "Host: 127.0.0.1\r\n"
     //                     "User-Agent: curl/7.61.1\r\n"
     //                     "Accept: */*\r\n"
     //                     "Connection: keep-alive\r\n\r\n");
     // std::cout << request;
-    size_t nparsed = http_parser_execute(&parser, &settings, str.c_str(), str.size());
-    if (nparsed != str.size()) {
+    size_t nparsed = http_parser_execute(&parser, &settings, data.data(), data.size());
+    if (nparsed != data.size()) {
         std::cout << "Error: " << http_errno_description(HTTP_PARSER_ERRNO(&parser)) << std::endl;
     }
     return 0;
@@ -82,6 +87,6 @@ int Parser::Execute(const std::vector<char>&data)
 int Parser::Send()
 {
     context->SendResponse();
-    context->Destory();
+
     return 0;
 }

@@ -13,10 +13,6 @@ class SubEpollAgent
         int SubEpFd;
         bool stop;
         bool hasexited;
-        std::mutex m;
-        std::condition_variable cv;
-        std::mutex l;
-        std::unordered_map<int,Connection>connections;
         ep e;
         std::thread t;
         
@@ -26,6 +22,5 @@ class SubEpollAgent
         int Stop();
         int AddConnection(int fd);
         int RemoveConnection(int fd);
-        int RegisterEvent(int fd);
         
 };

@@ -66,10 +66,10 @@ class TaskPool: public Singleton<TaskPool> {
 
             return 0;
         }
-        int AddToPool(std::function<void()>f)
+        int AddToPool(std::function<void()>&&f)
         {
             std::cout << "start to add" << std::endl;
-            bool flag = mq.Add(std::move(f));
+            bool flag = mq.Add(std::forward<std::function<void()>>(f));
             if(!flag)
             {
                 std::cout << "add failed" << std::endl;

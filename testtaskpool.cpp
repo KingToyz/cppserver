@@ -32,7 +32,7 @@ int main()
         {
             f(i);
         };
-        TaskPool::GetInstance().AddToPool(f1);
+        TaskPool::GetInstance().AddToPool(std::move(f1));
     }
     for(;!flag;){}
     auto f1 = []()

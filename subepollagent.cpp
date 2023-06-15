@@ -3,7 +3,8 @@
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
-
+#include <memory>
+#include "connectionmgr.h"
 int SubEpollAgent::Loop()
 {
     auto f = [&]()
@@ -16,10 +17,10 @@ int SubEpollAgent::Loop()
             {
                 if(evs[i].EventType == READ)
                 {
-                    auto iter = connections.find(evs[i].Fd);
-                    if(iter != connections.end())
+                    auto c = ConnectioMgr::GetInstance().FindConnection(evs[i].Fd);
+                    if(c != nullptr)
                     {
-                        int ret = iter->second.SocketCanRead();
+                        int ret = c->SocketCanRead();
                         if(ret == 0)
                         {
                             RemoveConnection(evs[i].Fd);
@@ -28,10 +29,10 @@ int SubEpollAgent::Loop()
                 }
                 else if(evs[i].EventType == WRITE)
                 {
-                    auto iter = connections.find(evs[i].Fd);
-                    if(iter != connections.end())
+                    auto c = ConnectioMgr::GetInstance().FindConnection(evs[i].Fd);
+                    if(c != nullptr)
                     {
-                        int ret = iter->second.SocketCanWrite();
+                        int ret = c->SocketCanWrite();
                         if(ret == 0)
                         {
                             RemoveConnection(evs[i].Fd);
@@ -45,16 +46,7 @@ int SubEpollAgent::Loop()
             }
             evs.clear();
         }
-        std::vector<int>StopFd;
-        for(auto iter = connections.begin();iter != connections.end();iter++)
-        {
-            int FD = iter->first;
-            StopFd.push_back(FD);
-        }
-        for(int i=0;i< StopFd.size();i++)
-        {
-            RemoveConnection(StopFd[i]);
-        }
+        ConnectioMgr::GetInstance().Destory();
         e.Stop();
     };
     t = std::thread(f);
@@ -76,28 +68,21 @@ int SubEpollAgent::AddConnection(int FD)
     {
         return -1;
     }
-    Connection c(FD,this);
-    std::unique_lock<std::mutex>lock(m);
-    connections.insert({FD,std::move(c)});
+    auto c = new Connection(FD,this);
+    ConnectioMgr::GetInstance().AddToConnectionMap(c);
     struct epoll_event ev;
     ep_events evs(FD,READ,ev);
     e.Register(evs);
-    m.unlock();
     return 0;
 }
 
 int SubEpollAgent::RemoveConnection(int FD)
 {
-    std::unique_lock<std::mutex>lock(m);
-    auto iter = connections.find(FD);
-    if(iter != connections.end())
-    {
-        connections.erase(iter);
-    }
+    ConnectioMgr::GetInstance().RemoveConnection(FD);
     struct epoll_event ev;
     ep_events evs(FD,DEL,ev);
     e.Register(evs);
-    m.unlock();
+    close(FD);
     return 0;
 }
 

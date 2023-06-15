@@ -50,6 +50,9 @@
         "ratio": "cpp",
         "mutex": "cpp",
         "thread": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "iomanip": "cpp"
     }
 }

@@ -6,7 +6,8 @@ class Message
     private:    
         std::vector<char>RawData;
     public:
-        int ProcessData();
+        // int ProcessData();
         Message(const char* s,int len);
         
+        std::vector<char> GetData();
 };

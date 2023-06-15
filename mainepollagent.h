@@ -3,13 +3,15 @@
 #include "subepollagent.h"
 #include <vector>
 #include <condition_variable>
-class MainEpollAgent
+#include <memory>
+#include "singleton.h"
+class MainEpollAgent:public Singleton<MainEpollAgent>
 {
     private:
         int EPFD;
         bool stop;
         ep e;
-        std::vector<SubEpollAgent*>subEpollAgents;
+        std::vector<std::unique_ptr<SubEpollAgent>>subEpollAgents;
 
     public:
         int Loop();

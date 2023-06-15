@@ -29,7 +29,7 @@ int Connection::Destory()
     // agent->RemoveConnection(fd_);
     std::cout << "conn destory" << std::endl;
     context.Destory();
-    close(fd_);
+    agent->RemoveConnection(fd_);
     return 0;
 }
 

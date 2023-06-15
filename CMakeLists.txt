@@ -13,7 +13,7 @@ link_directories(/usr/local/lib/)
 # set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
 # set(BUILD_STATIC_LIBS ON CACHE INTERNAL "")
 # FetchContent_MakeAvailable(llhttp)
-add_executable(testmainepollagent testmainepollagent.cpp mainepollagent.cpp subepollagent.cpp epoll.cpp connection.cpp context.cpp parse.cpp message.cpp)   
+add_executable(testmainepollagent testmainepollagent.cpp mainepollagent.cpp subepollagent.cpp epoll.cpp connection.cpp context.cpp parse.cpp message.cpp eventhandler.cpp connectionmgr.cpp)   
 
 # Link with the llhttp_static target
 target_link_libraries(testmainepollagent pthread libhttp_parser.so jsoncpp)
