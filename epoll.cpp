@@ -16,7 +16,7 @@ void SetNoBlock(int fd)
 }
 
 
-int ep_events::GetEventFd()
+int ep_event::GetEventFd()
 {
     return Fd;
 }
@@ -77,7 +77,7 @@ int ep::Init(int port)
     return 0;
 }
 
-int ep::WaitEvent(std::vector<ep_events>&eventLists)
+int ep::WaitEvent(std::vector<ep_event>&eventLists)
 {
     char buf[BUFSIZ];
     int buflen;
@@ -119,28 +119,37 @@ int ep::WaitEvent(std::vector<ep_events>&eventLists)
             // { 
             //     perror("epoll_ctl_read");
             // }
-            ep_events e(cfd,ACCPET,evlist[i]);
+            ep_event e(cfd,ACCPET);
+            eventLists.push_back(e);
+        }
+        else if (evlist[i].data.fd == exitfd[0])
+        {
+            std::cout << "epoll exited" << std::endl;
+            ep_event e(exitfd[0],EXIT);
             eventLists.push_back(e);
         }
         else if (evlist[i].events & EPOLLOUT)
         {
             std::cout << "get out" << std::endl;
-            // cfd = evlist[i].data.fd;
-            // buflen = read(cfd,buf,BUFSIZ-1);
-            ep_events e(evlist[i].data.fd,WRITE,evlist[i]);
+            ep_event e(evlist[i].data.fd,WRITE);
             eventLists.push_back(e);
         }
         else if (evlist[i].events & EPOLLIN)
         {
             std::cout << "get in" << std::endl;
-            ep_events e(evlist[i].data.fd,READ,evlist[i]);
+            ep_event e(evlist[i].data.fd,READ);
+            eventLists.push_back(e);
+        }
+        else
+        {
+            ep_event e(evlist[i].data.fd,READ);
             eventLists.push_back(e);
         }
     }
     return 0;
 }
 
-int ep::Register(const ep_events& event)
+int ep::Register(const ep_event& event)
 {
         if(event.EventType == DEL)
         {
@@ -185,5 +194,6 @@ int ep::StopEpollWait()
 int ep::Stop()
 {
     close(epfd);
+    close(fd);
     return 0;
 }

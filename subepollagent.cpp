@@ -5,48 +5,89 @@
 #include <unistd.h>
 #include <memory>
 #include "connectionmgr.h"
+#include <sys/timerfd.h>
 int SubEpollAgent::Loop()
 {
     auto f = [&]()
     {
-        std::vector<ep_events>evs;
-        while(!stop){
+        std::vector<ep_event>evs;
+        bool waitstop = false;
+        while(!waitstop){
             std::cout << "sub start to wait" << std::endl;
             e.WaitEvent(evs);
             for(int i=0;i<evs.size();++i)
             {
-                if(evs[i].EventType == READ)
+                if(evs[i].Fd == WriteFD[0])
                 {
-                    auto c = ConnectioMgr::GetInstance().FindConnection(evs[i].Fd);
+                    char buf[1024];
+                    int ret = read(WriteFD[0],buf,1024);
+                    if(ret < 0)
+                    {
+                        perror("recv write");
+                        continue;
+                    }
+                    int connectionFD = std::strtol(buf,nullptr,10);
+                    std::cout << "connectionFD:"<< connectionFD << std::endl;
+                    auto messages = messageMap->GetMessageFromMap(connectionFD);
+                    auto c = connectionMgr.FindConnection(connectionFD);
+                    if(c != nullptr)
+                    {
+                        int ret = c->SocketCanWrite(std::move(messages));
+                        if(ret < 0)
+                        {
+                            std::cout << "agent write reomove" << std::endl;
+                            RemoveConnection(c->GetFd());
+                        }
+                        else if(ret > 0)
+                        {
+                            RegisterEpollInEvent(evs[i].Fd);
+                        }
+                    }
+                }
+                else if(evs[i].EventType == READ)
+                {
+                    std::cout << "process read" << std::endl;
+                    auto c = connectionMgr.FindConnection(evs[i].Fd);
                     if(c != nullptr)
                     {
                         int ret = c->SocketCanRead();
                         if(ret == 0)
                         {
-                            RemoveConnection(evs[i].Fd);
+                            std::cout << "start to remove" << std::endl;
+                            RemoveConnection(c->GetFd());
                         }
                     }
                 }
                 else if(evs[i].EventType == WRITE)
                 {
-                    auto c = ConnectioMgr::GetInstance().FindConnection(evs[i].Fd);
+                    std::cout << "process write" << std::endl;
+                    auto c = connectionMgr.FindConnection(evs[i].Fd);
+                    auto messages = messageMap->GetMessageFromMap(evs[i].Fd);
                     if(c != nullptr)
                     {
-                        int ret = c->SocketCanWrite();
-                        if(ret == 0)
+                        int ret = c->SocketCanWrite(std::move(messages));
+                        if(ret < 0)
                         {
-                            RemoveConnection(evs[i].Fd);
+                            std::cout << "agent write reomove" << std::endl;
+                            RemoveConnection(c->GetFd());
                         }
+                        else if(ret > 0)
+                        {
+                            RegisterEpollInEvent(evs[i].Fd);
+                        }
+                        
                     }
                 }
-                else if(evs[i].Fd == e.exitfd[0])
+                else if(evs[i].EventType == EXIT)
                 {
-                    stop = true;
+                    std::cout << "process exit" << std::endl;
+                    waitstop = true;
                 }
             }
             evs.clear();
         }
-        ConnectioMgr::GetInstance().Destory();
+        std::cout << "loop out" << std::endl;
+        connectionMgr.Destory();
         e.Stop();
     };
     t = std::thread(f);
@@ -55,10 +96,20 @@ int SubEpollAgent::Loop()
 
 int SubEpollAgent::Init()
 {
+    messageMap = new MessageMap;
+    connectionMgr.Init(this);
+    int ret = pipe(WriteFD);
+    if(ret < 0)
+    {
+        perror("pipe");
+        return -1;
+    }
     SubEpFd = -1;
     hasexited = false;
     stop  = false;
     e.Init(SubEpFd);
+    ep_event evs(WriteFD[0],READ);
+    e.Register(evs);
     return 0;
 }
 
@@ -68,20 +119,17 @@ int SubEpollAgent::AddConnection(int FD)
     {
         return -1;
     }
-    auto c = new Connection(FD,this);
-    ConnectioMgr::GetInstance().AddToConnectionMap(c);
-    struct epoll_event ev;
-    ep_events evs(FD,READ,ev);
+    connectionMgr.AddToConnectionMap(FD,this);
+    ep_event evs(FD,READ);
     e.Register(evs);
     return 0;
 }
 
 int SubEpollAgent::RemoveConnection(int FD)
 {
-    ConnectioMgr::GetInstance().RemoveConnection(FD);
-    struct epoll_event ev;
-    ep_events evs(FD,DEL,ev);
-    e.Register(evs);
+    messageMap->DelMessage(FD);
+    RegisterDelEvent(FD);
+    connectionMgr.RemoveConnection(FD);
     close(FD);
     return 0;
 }
@@ -91,5 +139,41 @@ int SubEpollAgent::Stop()
     stop = true;
     e.StopEpollWait();
     t.join();
+    return 0;
+}
+
+
+int SubEpollAgent::RegisterWriteEvent(int CallBackID,int ConnectionFD,Message&& message)
+{
+    messageMap->AddToMap(ConnectionFD,std::forward<Message>(message));
+    std::string s = std::to_string(ConnectionFD);
+    std::unique_lock<std::mutex>lock(lockForWrite);
+    std::cout << "register write FD:" << s << std::endl;
+    int ret = write(WriteFD[1],s.c_str(),s.size());
+    if(ret < 0)
+    {
+        perror("write");
+        return -1;
+    }
+    return 0;
+}
+
+
+int SubEpollAgent::AddMessagesToLeftMap(int ConnectionFD,Message&& m)
+{
+    return messageMap->AddToLeftMessageMap(ConnectionFD,std::forward<Message>(m));
+}
+
+int SubEpollAgent::RegisterEpollInEvent(int ConnectionFD)
+{
+    ep_event evs(ConnectionFD,WRITE);
+    e.Register(evs);
+    return 0;
+}
+
+int SubEpollAgent::RegisterDelEvent(int ConnectionFD)
+{
+    ep_event evs(ConnectionFD,DEL);
+    e.Register(evs);
     return 0;
 }

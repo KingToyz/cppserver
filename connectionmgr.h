@@ -4,18 +4,20 @@
 #include <unordered_map>
 #include "singleton.h"
 #include "connection.h"
-
-class ConnectioMgr: public Singleton<ConnectioMgr>
+#include <memory>
+class SubEpollAgent;
+class ConnectioMgr
 {
     private:
-        std::mutex m;
-        std::condition_variable cv;
-        std::unordered_map<int,Connection*>connections;
-        
+       std::mutex l;
+       std::unordered_map<int,std::shared_ptr<Connection>>connections;
+
+       SubEpollAgent* agent;
     public:
-        int Init();
-        int AddToConnectionMap(Connection* c);
+        int Init(SubEpollAgent* agent);
+        int AddToConnectionMap(int FD, SubEpollAgent* agent);
         int RemoveConnection(int FD);
         int Destory();
-        Connection* FindConnection(int FD);
+        std::shared_ptr<Connection>FindConnection(int FD);
+        
 };

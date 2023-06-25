@@ -10,10 +10,18 @@ class Parser
         http_parser parser;
         Context* context;
         bool keepalive;
-        
+        bool gotCallBackID;
+        const char* bodyData;
+        int bodyLen;
+        int callbackID;
     public:
         Parser(Context* c);
-        int Execute(const std::vector<char>&data);
-        int Send();
+        std::pair<std::shared_ptr<Message>,int> Execute(const char* data,int size);
         void Destory();
+        void SetGetCallBackID();
+        void SetCallBackID(int CallBackID);
+        int GetCallBackID();
+        bool CheckCallBackID();
+        Context* GetContext();
+        void SetBody(const char* Data,int len);
 };

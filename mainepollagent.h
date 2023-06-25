@@ -14,6 +14,7 @@ class MainEpollAgent:public Singleton<MainEpollAgent>
         std::vector<std::unique_ptr<SubEpollAgent>>subEpollAgents;
 
     public:
+        friend class Singleton<MainEpollAgent>;
         int Loop();
         int Init(int FD,int agentnum);
         int NotifyStop();

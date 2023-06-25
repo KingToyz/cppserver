@@ -9,12 +9,11 @@
 #include "const.h"
 #include <vector>
 
-class ep_events {
+class ep_event {
     public:
-        uint32_t EventType;
+        EVENTTYPE EventType;
         int Fd;
-        epoll_event Ev;
-        ep_events(int fd,uint32_t type,epoll_event ev):EventType(type),Fd(fd),Ev(ev){
+        ep_event(int fd,uint32_t type):EventType(type),Fd(fd){
 
         }
         int GetEventFd();
@@ -31,8 +30,8 @@ class ep {
         int cfd;
         
         socklen_t socklen;
-    public:
         int exitfd[2];
+    public:
         ep(){
             int ret = pipe(exitfd);
             if(ret != 0)
@@ -42,8 +41,8 @@ class ep {
             }
         }
         int Init(int port);
-        int WaitEvent(std::vector<ep_events>&eventLists);
-        int Register(const ep_events &event);
+        int WaitEvent(std::vector<ep_event>&eventLists);
+        int Register(const ep_event &event);
         int StopEpollWait();
         int Stop();
 };

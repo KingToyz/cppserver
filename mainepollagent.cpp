@@ -11,7 +11,7 @@
 int MainEpollAgent::Loop()
 {
     e.Init(EPFD);
-    std::vector<ep_events>evs;
+    std::vector<ep_event>evs;
     while(!stop){
         std::cout << "main start to wait" << std::endl;
         int ret = e.WaitEvent(evs);
@@ -19,7 +19,7 @@ int MainEpollAgent::Loop()
         {
             std::cout << "stop:" << stop << std::endl;
         }
-        std::vector<ep_events>reg;
+        std::vector<ep_event>reg;
         for(int i=0;i<evs.size();++i)
         {
             if(evs[i].EventType == ACCPET)
@@ -27,7 +27,7 @@ int MainEpollAgent::Loop()
                 std::cout << "main accept" << std::endl;
                 subEpollAgents[evs[i].Fd % subEpollAgents.size()]->AddConnection(evs[i].Fd);
             }
-            else if(evs[i].Fd == e.exitfd[0])
+            else if(evs[i].EventType == EXIT)
             {
                 stop = true;
             }
@@ -37,13 +37,13 @@ int MainEpollAgent::Loop()
     for(int i = 0 ;i < subEpollAgents.size();i++)
     {
         subEpollAgents[i]->Stop();
+        std::cout << "subagent "<< i << " exited" << std::endl;
     }
     return 0;
 }
 
 int MainEpollAgent::Init(int FD,int num)
 {
-    ConnectioMgr::GetInstance().Init();
     stop = false;
     subEpollAgents.reserve(num);
     for(int i = 0 ;i < num;i++)

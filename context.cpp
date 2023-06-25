@@ -1,32 +1,48 @@
 #include "context.h"
 #include <iostream>
 #include <sys/socket.h>
+#include "connection.h"
+#include "taskpool.h"
+#include "eventhandler.h"
+
 void Context::Destory()
 {
     // conn->Destory();
+    destory = true;
     std::cout << "context destory" << std::endl;
 }
 
-int Context::ParseRequst(const std::vector<char>& data)
+int Context::ParseRequst(const char* data,int hasRead)
 {
-    parser.Execute(data);
+    auto ret = parser.Execute(data,hasRead);
+    if(ret.first != nullptr)
+    {
+        auto f = [=]()
+        {
+            EventHandler::GetInstance().ProcessData(ret.first,GetConnection()->GetAgent(),fd,ret.second);
+        };
+        TaskPool::GetInstance().AddToPool(std::move(f));
+        return 1;
+    }
+    return -1;
+}
+
+int Context::GetFD()
+{
+    return fd;
+}
+
+int Context::Init()
+{
     return 0;
 }
 
-int Context::SendResponse()
+bool Context::IsDestory()
 {
-    std::string str = "testtestsetestsetset";
-    std::copy(str.begin(),str.end(),std::back_inserter(senddata));
-    int haswrite = send(fd,senddata.data(),senddata.size(),0);
-    if(haswrite >= 0 )
-    {
-        return haswrite;
-    }
-    else
-    {
-        perror("write");
-        return -1;
-    }
-    return 0;
+    return destory;
 }
 
+Connection* Context::GetConnection()
+{
+    return connection;
+}

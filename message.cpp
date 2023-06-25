@@ -2,14 +2,40 @@
 #include "taskpool.h"
 #include "eventhandler.h"
 
-Message::Message(const char* s,int len):RawData(s,s+len)
+Message::Message(const char* s,int len,bool LastMessage):HasWrite(0),Last(LastMessage),Len(len)
 {
-    
+    strncpy(Data,s,len);
+}
+
+Message::Message(std::string s,bool LastMessage):HasWrite(0),Last(LastMessage),Len(s.size())
+{
+    strncpy(Data,s.c_str(),s.size());
+}
+
+const char* Message::GetData()
+{
+    return Data;
+}
+
+bool Message::GetLast()
+{
+    return Last;
 }
 
 
-
-std::vector<char> Message::GetData()
+int Message::GetWritePos()
 {
-    return RawData;
+    return HasWrite;
+
+}
+int Message::SetHasWrite(int size)
+{
+    HasWrite += size;
+    return 0;
+}   
+
+
+int Message::GetLen()
+{
+    return Len;
 }

@@ -4,19 +4,22 @@
 #include "queue.h"
 #include "parse.h"
 #include <memory>
+class Connection;
 class Context
 {
     private:
         int fd;
-        std::vector<char> recvdata;
-        std::vector<char> senddata;
+        Connection* connection;
         Parser parser;
+        bool destory;
     public:
-        Context(int FD):fd(FD),parser(this){
+        Context(int FD,Connection* connection):fd(FD),parser(this),connection(connection),destory(false){
             
         }
         int Init();
         void Destory();
-        int ParseRequst(const std::vector<char>& data);
-        int SendResponse();
+        int ParseRequst(const char* data,int hasRead);
+        int GetFD();
+        bool IsDestory();
+        Connection* GetConnection();
 };

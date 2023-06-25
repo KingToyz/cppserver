@@ -1,19 +1,21 @@
 #include "connectionmgr.h"
-
-int ConnectioMgr::AddToConnectionMap(Connection* c)
+#include "subepollagent.h"
+#include <iostream>
+int ConnectioMgr::AddToConnectionMap(int FD, SubEpollAgent* agent)
 {
-    std::unique_lock<std::mutex>lock(m);
-    if(connections.find(c->GetFd()) != connections.end())
+    std::unique_lock<std::mutex>lock(l);
+    if(connections.find(FD) != connections.end())
     {
         return -1;
     }
-    connections[c->GetFd()]  = c;
+    std::cout << "add connection:" << FD << std::endl;
+    connections[FD]  = std::make_shared<Connection>(FD,agent);
     return 0;
 }
 
-Connection* ConnectioMgr::FindConnection(int FD)
+std::shared_ptr<Connection> ConnectioMgr::FindConnection(int FD)
 {
-    std::unique_lock<std::mutex>lock(m);
+    std::unique_lock<std::mutex>lock(l);
     if(connections.find(FD) != connections.end())
     {
        return connections[FD];
@@ -23,25 +25,31 @@ Connection* ConnectioMgr::FindConnection(int FD)
 
 int ConnectioMgr::RemoveConnection(int FD)
 {
-    std::unique_lock<std::mutex>lock(m);
-    if(connections.find(FD) != connections.end())
+    std::cout << "mgr remove" << std::endl;
+    std::unique_lock<std::mutex>lock(l);
+    auto iter = connections.find(FD);
+    if(iter != connections.end())
     {
-       connections.erase(FD);
+       connections.erase(iter);
+       iter->second->Destory();
     }
     return 0;
 }
 
-int ConnectioMgr::Init()
+int ConnectioMgr::Init(SubEpollAgent* pagent)
 {
+    agent = pagent;
     return 0;
 }
 
 int ConnectioMgr::Destory()
 {
-    std::unique_lock<std::mutex>lock(m);
+    std::unique_lock<std::mutex>lock(l);
     for(auto iter = connections.begin();iter != connections.end();iter++)
     {
         iter->second->Destory();
+        close(iter->first);
     }
+    std::cout << "ConnectioMgr destory finished" << std::endl;
     return 0;
 }

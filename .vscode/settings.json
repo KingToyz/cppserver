@@ -53,6 +53,8 @@
         "csignal": "cpp",
         "map": "cpp",
         "set": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "cinttypes": "cpp",
+        "unordered_set": "cpp"
     }
 }
