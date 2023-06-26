@@ -7,27 +7,35 @@
 int Connection::SocketCanRead()
 {
     char buf[MAX_BUF];
-    int hasRead = recv(fd_,buf,MAX_BUF,0);
-    if(hasRead == 0)
+    std::cout << "recv fd:" << fd_ << std::endl;
+    while(1)
     {
-        return 0;
-    }
-    else if(hasRead < 0 )
-    {
-        perror("read");
-        return -1;
-    }
-    else
-    {
-        int ret = context.ParseRequst(buf,hasRead);
-        return ret;
+        int hasRead = recv(fd_,buf,MAX_BUF,0);
+        std::cout << "recv hasRead:" << hasRead << std::endl;
+        if(hasRead == 0)
+        {
+            return 0;
+        }
+        else if(hasRead < 0 )
+        {
+            if(errno != EAGAIN && errno != EWOULDBLOCK)
+            {
+                perror("read");
+                return 0;
+            }
+            return -1;
+        }
+        else
+        {
+            int ret = context.ParseRequst(buf,hasRead);
+        }
     }
 }
 
 int Connection::Destory()
 {
     // agent->RemoveConnection(fd_);
-    std::cout << "conn destory" << std::endl;
+    // std::cout << "conn destory" << std::endl;
     context.Destory();
     return 0;
 }
@@ -41,7 +49,12 @@ int Connection::SocketCanWrite(std::vector<Message>&&messages)
     for(auto& message:messages)
     {
         int Pos = message.GetWritePos();
+        std::cout << "send fd:" << fd_ << std::endl;
+        std::cout << "send pos:" << Pos << std::endl;
+        std::cout << "len:" << message.GetLen() << std::endl;
+        std::cout << "message:" << message.GetData() << std::endl;
         int HasWrite = send(fd_,message.GetData()+Pos,message.GetLen()-Pos,0);
+        std::cout << "send size:" << HasWrite << std::endl;
         if(HasWrite < 0)
         {
             if(errno == EAGAIN)
@@ -66,6 +79,7 @@ int Connection::SocketCanWrite(std::vector<Message>&&messages)
         {
             if(message.GetLast())
             {
+                std::cout << "write finish WritePos:" << message.GetWritePos() << std::endl;
                 return -1;
             }
         }

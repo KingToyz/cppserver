@@ -8,7 +8,7 @@ int ConnectioMgr::AddToConnectionMap(int FD, SubEpollAgent* agent)
     {
         return -1;
     }
-    std::cout << "add connection:" << FD << std::endl;
+    // std::cout << "add connection:" << FD << std::endl;
     connections[FD]  = std::make_shared<Connection>(FD,agent);
     return 0;
 }
@@ -25,7 +25,7 @@ std::shared_ptr<Connection> ConnectioMgr::FindConnection(int FD)
 
 int ConnectioMgr::RemoveConnection(int FD)
 {
-    std::cout << "mgr remove" << std::endl;
+    std::cout << "mgr remove:" << FD << std::endl;
     std::unique_lock<std::mutex>lock(l);
     auto iter = connections.find(FD);
     if(iter != connections.end())
@@ -50,6 +50,6 @@ int ConnectioMgr::Destory()
         iter->second->Destory();
         close(iter->first);
     }
-    std::cout << "ConnectioMgr destory finished" << std::endl;
+    // std::cout << "ConnectioMgr destory finished" << std::endl;
     return 0;
 }

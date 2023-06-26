@@ -11,10 +11,10 @@ void signal_handler(int signal)
 
 void f(int x)
 {
-    std::cout << "thread: "<< x << " start"<< std::endl;
+    // std::cout << "thread: "<< x << " start"<< std::endl;
     for(int i = 0;i < 10;i++)
     {
-        std::cout << "thread: "<< x << " output " << i << std::endl;
+        // std::cout << "thread: "<< x << " output " << i << std::endl;
         sleep(1);
     }
 }

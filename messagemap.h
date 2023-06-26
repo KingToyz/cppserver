@@ -13,4 +13,5 @@ class MessageMap
         std::vector<Message>GetMessageFromMap(int ConnectionID);
         int AddToLeftMessageMap(int ConnectionID,Message&& m);
         int DelMessage(int ConnectionID);
+        std::unordered_map<int,std::vector<Message>> GetAllMessageFromMap();
 };

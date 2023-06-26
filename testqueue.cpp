@@ -37,7 +37,7 @@ int main()
             bool b = mq.Pop(t);
             if(b)
             {
-                std::cout << "get " << t << std::endl;
+                // std::cout << "get " << t << std::endl;
             }
         }
     };

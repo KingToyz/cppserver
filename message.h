@@ -18,5 +18,4 @@ class Message
         int GetWritePos();
         int SetHasWrite(int size);
         int GetLen();
-        int MakeResponse(RESPONSETYPE Type,const char* resp);
 };

@@ -29,15 +29,8 @@ int ep::Init(int port)
         perror("epoll_create1"); exit(1); 
     }
     epev.events = EPOLLIN | EPOLLET;
-    epev.data.fd = STDIN_FILENO; // for quit
-    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, STDIN_FILENO, &epev);
-    if (0 > ret) 
-    { 
-        perror("epoll_ctl_STDIN_FILENO");exit(1); 
-    }
-    epev.events = EPOLLIN | EPOLLET;
     epev.data.fd = exitfd[0]; // for quit
-    ret = epoll_ctl(epfd, EPOLL_CTL_ADD, exitfd[0], &epev);
+    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, exitfd[0], &epev);
     if (0 > ret) 
     { 
         perror("epoll_ctl_exitfd");exit(1); 
@@ -53,18 +46,28 @@ int ep::Init(int port)
         if(0 > fd)
         {
             perror("socket");
-            // exit(1);
+            exit(1);
         }
-        std::cout << "fd:" << fd << std::endl;
+        SetNoBlock(fd);
+        // std::cout << "fd:" << fd << std::endl;
+        int one = 1;
+        if (0 > setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) 
+        {
+            perror("setsockopt"); 
+            close(fd);
+            exit(1); 
+        }
         if (0 > bind(fd, (struct sockaddr *)&ssin, socklen)) 
         { 
             perror("bind"); 
+            close(fd);
             exit(1); 
         }
     
         if (0 > listen(fd, 5)) 
         { 
             perror("listen"); 
+            close(fd);
             exit(1); 
         }
         epev.data.fd = fd;
@@ -82,7 +85,7 @@ int ep::WaitEvent(std::vector<ep_event>&eventLists)
     char buf[BUFSIZ];
     int buflen;
     int nfds = epoll_wait(epfd,evlist,MAX,-1);
-    std::cout << "nfds:" << nfds << std::endl;
+    // std::cout << "nfds:" << nfds << std::endl;
     if(nfds < 0)
     {
         perror("WaitEvent epoll_wait");
@@ -90,58 +93,51 @@ int ep::WaitEvent(std::vector<ep_event>&eventLists)
     }
     for(int i = 0;i < nfds;i++)
     {
-        std::cout << "waitfd:" << evlist[i].data.fd << std::endl;
-        if (evlist[i].data.fd == STDIN_FILENO)
-        {
-            fgets(buf, BUFSIZ-1, stdin);
-            if (!strcmp(buf, "quit") || !strcmp(buf, "exit"))
-            {
-                close(fd);
-                std::cout << "fd:" << fd << "quit" << std::endl;
-                exit(1);
-            }
-        }
+        if ((evlist[i].events & EPOLLERR) ||
+              (evlist[i].events & EPOLLHUP) ||
+              (!(evlist[i].events & EPOLLIN)))
+	    {
+              /* An error has occured on this fd, or the socket is not
+                 ready for reading (why were we notified then?) */
+	      fprintf(stderr, "epoll error\n");
+	      close (evlist[i].data.fd);
+          ep_event e(evlist[i].data.fd,ERROR);
+          eventLists.push_back(e);
+	    }
         else if (evlist[i].data.fd == fd)
         {
-            cfd = accept(fd,(struct sockaddr *)&csin,&socklen);
-            std::cout << "acceptfd:" << cfd << std::endl;
-            if(cfd < 0) 
+            while(1)
             {
-                perror("accept");
-                continue;
+                cfd = accept(fd,(struct sockaddr *)&csin,&socklen);
+                if(cfd < 0) 
+                {
+                    if(errno != EAGAIN && errno != EWOULDBLOCK)
+                    {
+                        perror("accept");
+                    }
+                    break;
+                }
+                SetNoBlock(cfd);
+        
+                ep_event e(cfd,ACCPET);
+                eventLists.push_back(e);
             }
-            SetNoBlock(cfd);
-      
-            // epev.events = EPOLLIN | EPOLLET;
-            // epev.data.fd = cfd;
-            // int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &epev);
-            // if (ret < 0) 
-            // { 
-            //     perror("epoll_ctl_read");
-            // }
-            ep_event e(cfd,ACCPET);
-            eventLists.push_back(e);
         }
         else if (evlist[i].data.fd == exitfd[0])
         {
-            std::cout << "epoll exited" << std::endl;
+            // std::cout << "epoll exited" << std::endl;
             ep_event e(exitfd[0],EXIT);
             eventLists.push_back(e);
         }
         else if (evlist[i].events & EPOLLOUT)
         {
-            std::cout << "get out" << std::endl;
+            // std::cout << "get out" << std::endl;
             ep_event e(evlist[i].data.fd,WRITE);
             eventLists.push_back(e);
         }
         else if (evlist[i].events & EPOLLIN)
         {
-            std::cout << "get in" << std::endl;
-            ep_event e(evlist[i].data.fd,READ);
-            eventLists.push_back(e);
-        }
-        else
-        {
+            // std::cout << "get in" << std::endl;
             ep_event e(evlist[i].data.fd,READ);
             eventLists.push_back(e);
         }
@@ -153,7 +149,7 @@ int ep::Register(const ep_event& event)
 {
         if(event.EventType == DEL)
         {
-            std::cout << "reg del" << std::endl;
+            // std::cout << "reg del" << std::endl;
             int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, event.Fd, NULL);
             if (ret < 0) 
             { 
@@ -162,7 +158,7 @@ int ep::Register(const ep_event& event)
         }
         else if(event.EventType == WRITE)
         {
-            std::cout << "reg write" << std::endl;
+            // std::cout << "reg write" << std::endl;
             epev.events = EPOLLOUT | EPOLLET | EPOLLIN;
             epev.data.fd = event.Fd;
             int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, event.Fd, &epev);
@@ -173,7 +169,7 @@ int ep::Register(const ep_event& event)
         }
         else if(event.EventType == READ)
         {
-            std::cout << "reg read:" << event.Fd << std::endl;
+            // std::cout << "reg read:" << event.Fd << std::endl;
             epev.events = EPOLLET | EPOLLIN;
             epev.data.fd = event.Fd;
             int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, event.Fd, &epev);

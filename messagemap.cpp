@@ -13,9 +13,9 @@ std::vector<Message> MessageMap::GetMessageFromMap(int ConnectionID)
     if(iter != ConnectionIDToMessages.end())
     {
         ret = std::move(iter->second);
-        ConnectionIDToMessages.erase(iter);
-        lock.unlock();   
+        ConnectionIDToMessages.erase(iter);   
     }
+    lock.unlock();
     iter = ConnectionIDToLeftMessages.find(ConnectionID);
     if(iter != ConnectionIDToLeftMessages.end())
     {
@@ -38,4 +38,19 @@ int MessageMap::DelMessage(int ConnectionID)
     std::unique_lock<std::mutex>lock(l);
     ConnectionIDToMessages.erase(ConnectionID);
     return 0;
+}
+
+std::unordered_map<int,std::vector<Message>> MessageMap::GetAllMessageFromMap()
+{
+    std::unordered_map<int,std::vector<Message>> ret;
+    std::unique_lock<std::mutex>lock(l);
+    ret = std::move(ConnectionIDToMessages);
+    ConnectionIDToMessages.clear();
+    lock.unlock();
+    for(auto& iter:ConnectionIDToLeftMessages)
+    {
+        ret[iter.first].insert(ret[iter.first].end(),std::make_move_iterator(iter.second.begin()),std::make_move_iterator(iter.second.end()));
+    }
+    ConnectionIDToLeftMessages.clear();
+    return ret;
 }

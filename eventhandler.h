@@ -16,5 +16,5 @@ class EventHandler: public Singleton<EventHandler>
         std::unordered_map<std::string,std::function<int(const std::string& req,std::string& resp)>>FunctionMap;
         std::string MakeTimeoutResponse(int CallbackID);
         std::string MakeErrorMethodResponse(int CallbackID);
-        std::string MakeSuccessResponse(int CallbackID);
+        std::string MakeSuccessResponse(int CallbackID,const std::string& resp);
 };

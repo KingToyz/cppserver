@@ -16,14 +16,14 @@ class TaskPool: public Singleton<TaskPool> {
         friend class Singleton<TaskPool>;
         int Start()
         {
-            std::cout << "start" << std::endl;
+            // std::cout << "start" << std::endl;
             auto f = [&]()
             {
-                std::cout << "consumer to get" << std::endl;
+                // std::cout << "consumer to get" << std::endl;
                 bool threadStop = false;
                 while(!threadStop)
                 {
-                    std::cout << "start to get" << std::endl;
+                    // std::cout << "start to get" << std::endl;
                     std::function<void()>para;
                     bool ret = mq.Pop(para);
                     if(ret)
@@ -37,12 +37,12 @@ class TaskPool: public Singleton<TaskPool> {
                 }
                 std::cout << "consumer to exit" << std::endl;
             };
-            std::cout << "threadsize " << ThreadSize << std::endl;
+            // std::cout << "threadsize " << ThreadSize << std::endl;
             for(int i = 0;i < ThreadSize; i++)
             {
-                std::cout << "thread " << i << " start" << std::endl;
+                // std::cout << "thread " << i << " start" << std::endl;
                 ThreadPool[i] = std::thread(f);
-                std::cout << "thread " << i << " start finish" << std::endl;
+                // std::cout << "thread " << i << " start finish" << std::endl;
             }
             return 0;
         }
@@ -50,7 +50,7 @@ class TaskPool: public Singleton<TaskPool> {
         int Stop()
         {
             mq.close();
-            std::cout << "mq close " << std::endl;
+            // std::cout << "mq close " << std::endl;
             for(int i = 0;i < ThreadSize;i++)
             {
                 ThreadPool[i].join();
@@ -68,11 +68,11 @@ class TaskPool: public Singleton<TaskPool> {
         }
         int AddToPool(std::function<void()>&&f)
         {
-            std::cout << "start to add" << std::endl;
+            // std::cout << "start to add" << std::endl;
             bool flag = mq.Add(std::forward<std::function<void()>>(f));
             if(!flag)
             {
-                std::cout << "add failed" << std::endl;
+                // std::cout << "add failed" << std::endl;
             }
             return 0;
         }

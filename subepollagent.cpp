@@ -13,7 +13,7 @@ int SubEpollAgent::Loop()
         std::vector<ep_event>evs;
         bool waitstop = false;
         while(!waitstop){
-            std::cout << "sub start to wait" << std::endl;
+            // std::cout << "sub start to wait" << std::endl;
             e.WaitEvent(evs);
             for(int i=0;i<evs.size();++i)
             {
@@ -26,27 +26,32 @@ int SubEpollAgent::Loop()
                         perror("recv write");
                         continue;
                     }
-                    int connectionFD = std::strtol(buf,nullptr,10);
-                    std::cout << "connectionFD:"<< connectionFD << std::endl;
-                    auto messages = messageMap->GetMessageFromMap(connectionFD);
-                    auto c = connectionMgr.FindConnection(connectionFD);
-                    if(c != nullptr)
+                    auto MessagesPairs = messageMap->GetAllMessageFromMap();
+                    for(auto& Message : MessagesPairs)
                     {
-                        int ret = c->SocketCanWrite(std::move(messages));
-                        if(ret < 0)
+                        int connectionFD = Message.first;
+                        std::cout << "connectionFD:"<< connectionFD << std::endl;
+                        auto messages = Message.second;
+                        auto c = connectionMgr.FindConnection(connectionFD);
+                        if(c != nullptr)
                         {
-                            std::cout << "agent write reomove" << std::endl;
-                            RemoveConnection(c->GetFd());
-                        }
-                        else if(ret > 0)
-                        {
-                            RegisterEpollInEvent(evs[i].Fd);
+                            int ret = c->SocketCanWrite(std::move(messages));
+                            if(ret < 0)
+                            {
+                                std::cout << "agent write reomove" << std::endl;
+                                RemoveConnection(c->GetFd());
+                            }
+                            else if(ret > 0)
+                            {
+                                RegisterEpollInEvent(c->GetFd());
+                            }
                         }
                     }
+                    
                 }
                 else if(evs[i].EventType == READ)
                 {
-                    std::cout << "process read" << std::endl;
+                    // std::cout << "process read" << std::endl;
                     auto c = connectionMgr.FindConnection(evs[i].Fd);
                     if(c != nullptr)
                     {
@@ -57,10 +62,14 @@ int SubEpollAgent::Loop()
                             RemoveConnection(c->GetFd());
                         }
                     }
+                    else
+                    {
+                        std::cout << "not read fd:" << evs[i].Fd << std::endl;
+                    }
                 }
                 else if(evs[i].EventType == WRITE)
                 {
-                    std::cout << "process write" << std::endl;
+                    // std::cout << "process write" << std::endl;
                     auto c = connectionMgr.FindConnection(evs[i].Fd);
                     auto messages = messageMap->GetMessageFromMap(evs[i].Fd);
                     if(c != nullptr)
@@ -68,7 +77,7 @@ int SubEpollAgent::Loop()
                         int ret = c->SocketCanWrite(std::move(messages));
                         if(ret < 0)
                         {
-                            std::cout << "agent write reomove" << std::endl;
+                            std::cout << "agent write1 reomove" << std::endl;
                             RemoveConnection(c->GetFd());
                         }
                         else if(ret > 0)
@@ -80,13 +89,17 @@ int SubEpollAgent::Loop()
                 }
                 else if(evs[i].EventType == EXIT)
                 {
-                    std::cout << "process exit" << std::endl;
+                    std::cout << "sub epoll exit" << std::endl;
                     waitstop = true;
+                }
+                else if(evs[i].EventType == ERROR)
+                {
+                    RemoveConnection(evs[i].Fd);
                 }
             }
             evs.clear();
         }
-        std::cout << "loop out" << std::endl;
+        // std::cout << "loop out" << std::endl;
         connectionMgr.Destory();
         e.Stop();
     };
@@ -130,7 +143,11 @@ int SubEpollAgent::RemoveConnection(int FD)
     messageMap->DelMessage(FD);
     RegisterDelEvent(FD);
     connectionMgr.RemoveConnection(FD);
-    close(FD);
+    int ret = close(FD);
+    if(ret < 0)
+    {
+        perror("close");
+    }
     return 0;
 }
 
@@ -145,11 +162,12 @@ int SubEpollAgent::Stop()
 
 int SubEpollAgent::RegisterWriteEvent(int CallBackID,int ConnectionFD,Message&& message)
 {
+    std::cout << "add to map connectionID:" << ConnectionFD << std::endl;
     messageMap->AddToMap(ConnectionFD,std::forward<Message>(message));
     std::string s = std::to_string(ConnectionFD);
     std::unique_lock<std::mutex>lock(lockForWrite);
-    std::cout << "register write FD:" << s << std::endl;
-    int ret = write(WriteFD[1],s.c_str(),s.size());
+    // std::cout << "register write FD:" << s << std::endl;
+    int ret = write(WriteFD[1],"1",1);
     if(ret < 0)
     {
         perror("write");

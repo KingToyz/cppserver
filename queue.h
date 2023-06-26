@@ -56,7 +56,10 @@ class MessageQueue
                 }
                 if(shutdown)
                 {
-                    return false;
+                    if(q.empty())
+                    {
+                        return false;
+                    }
                 }
                 t = std::move(*q.begin());
                 q.pop_front();

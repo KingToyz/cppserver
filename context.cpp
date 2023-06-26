@@ -9,7 +9,7 @@ void Context::Destory()
 {
     // conn->Destory();
     destory = true;
-    std::cout << "context destory" << std::endl;
+    // std::cout << "context destory" << std::endl;
 }
 
 int Context::ParseRequst(const char* data,int hasRead)

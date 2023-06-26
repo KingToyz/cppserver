@@ -3,8 +3,7 @@
 #include <iostream>
 int EventHandler::ProcessData(std::shared_ptr<Message>message,SubEpollAgent* agent,int ConnectionFD,int CallBackID)
 {
-    std::cout << "start to process" << std::endl;
-    
+    // std::cout << "start to process" << std::endl;
     Json::Value root;
     Json::Reader reader;
     bool success = reader.parse(message->GetData(),message->GetData()+message->GetLen(), root);
@@ -27,7 +26,11 @@ int EventHandler::ProcessData(std::shared_ptr<Message>message,SubEpollAgent* age
             auto iter = FunctionMap.find(root["method"].asString());
             if(iter != FunctionMap.end())
             {
-                auto RespData = MakeSuccessResponse(CallBackID);
+                
+                std::string data = root["data"].asString();
+                std::string res;
+                int ret = iter->second(data,res);
+                auto RespData = MakeSuccessResponse(CallBackID,res);
                 Message m(RespData,true);
                 agent->RegisterWriteEvent(CallBackID,ConnectionFD,std::move(m));
             }
@@ -48,7 +51,7 @@ int EventHandler::ProcessData(std::shared_ptr<Message>message,SubEpollAgent* age
     else 
     {
         // TODO: handle parse error
-        std::cout << "parse error" << std::endl;
+        // std::cout << "parse error" << std::endl;
         return ERRORCODE::PARSEWRONG;
     }
     return ERRORCODE::SUCCESS;
@@ -81,7 +84,7 @@ std::string EventHandler::MakeErrorMethodResponse(int CallbackID)
     return data;
 }
 
-std::string EventHandler::MakeSuccessResponse(int CallbackID)
+std::string EventHandler::MakeSuccessResponse(int CallbackID,const std::string& resp)
 {
-    return "";
+    return resp;
 }
